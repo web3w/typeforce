@@ -1,21 +1,21 @@
-const assert = require('assert')
-const benchmark = require('benchmark')
-const local = require('../')
-const npm = require('typeforce')
-const TYPES = require('../test/types')
-const VALUES = require('../test/values')
-const tests = require('../test/fixtures')
-const fixtures = tests.valid.concat(tests.invalid)
+import { throws } from 'assert'
+import { Suite } from 'benchmark'
+import local, { compile } from '../index.js'
+import npm from 'typeforce'
+import TYPES from '../test/types'
+import VALUES from '../test/values'
+import { valid, invalid } from '../test/fixtures'
+const fixtures = valid.concat(invalid)
 
 fixtures.forEach(function (f) {
   const type = TYPES[f.typeId] || f.type
   const value = VALUES[f.valueId] || f.value
-  const ctype = local.compile(type)
+  const ctype = compile(type)
 
   if (f.exception) {
-    assert.throws(function () { local(type, value, f.strict) }, new RegExp(f.exception))
+    throws(function () { local(type, value, f.strict) }, new RegExp(f.exception))
     // assert.throws(function () { npm(type, value, f.strict) }, new RegExp(f.exception))
-    assert.throws(function () { local(ctype, value, f.strict) }, new RegExp(f.exception))
+    throws(function () { local(ctype, value, f.strict) }, new RegExp(f.exception))
     // assert.throws(function () { npm(ctype, value, f.strict) }, new RegExp(f.exception))
   } else {
     local(type, value, f.strict)
@@ -27,11 +27,11 @@ fixtures.forEach(function (f) {
 
 // benchmark.options.minTime = 1
 fixtures.forEach(function (f) {
-  const suite = new benchmark.Suite()
+  const suite = new Suite()
   const tdescription = JSON.stringify(f.type)
   const type = TYPES[f.typeId] || f.type
   const value = VALUES[f.valueId] || f.value
-  const ctype = local.compile(type)
+  const ctype = compile(type)
 
   if (f.exception) {
     suite.add('local(e)#' + tdescription, function () { try { local(type, value, f.strict) } catch (e) {} })

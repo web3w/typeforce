@@ -1,5 +1,5 @@
-var NATIVE = require('./native')
-var ERRORS = require('./errors')
+import NATIVE from './native.js'
+import { tfCustomError } from './errors.js'
 
 function _Buffer (value) {
   return Buffer.isBuffer(value)
@@ -16,7 +16,7 @@ function _LengthN (type, length) {
     if (!type(value)) return false
     if (value.length === length) return true
 
-    throw ERRORS.tfCustomError(name + '(Length: ' + length + ')', name + '(Length: ' + value.length + ')')
+    throw tfCustomError(name + '(Length: ' + length + ')', name + '(Length: ' + value.length + ')')
   }
   Length.toJSON = function () { return name }
 
@@ -88,4 +88,4 @@ for (var typeName in types) {
   }.bind(null, typeName)
 }
 
-module.exports = types
+export default types

@@ -1,35 +1,36 @@
-const native = require('./native')
+// import { Nil as _Nil, Function as _Function, String as _String, Object as _Object, Array as _Array } from './NATIVE.js'
+import NATIVE from "./native.js"
 
-function getTypeName (fn) {
+function getTypeName(fn) {
   return fn.name || fn.toString().match(/function (.*?)\s*\(/)[1]
 }
 
-function getValueTypeName (value) {
-  return native.Nil(value) ? '' : getTypeName(value.constructor)
+export function getValueTypeName(value) {
+  return NATIVE.Nil(value) ? '' : getTypeName(value.constructor)
 }
 
-function getValue (value) {
-  if (native.Function(value)) return ''
-  if (native.String(value)) return JSON.stringify(value)
-  if (value && native.Object(value)) return ''
+function getValue(value) {
+  if (NATIVE.Function(value)) return ''
+  if (NATIVE.String(value)) return JSON.stringify(value)
+  if (value && NATIVE.Object(value)) return ''
   return value
 }
 
-function captureStackTrace (e, t) {
+function captureStackTrace(e, t) {
   if (Error.captureStackTrace) {
     Error.captureStackTrace(e, t)
   }
 }
 
-function tfJSON (type) {
-  if (native.Function(type)) return type.toJSON ? type.toJSON() : getTypeName(type)
-  if (native.Array(type)) return 'Array'
-  if (type && native.Object(type)) return 'Object'
+export function tfJSON(type) {
+  if (NATIVE.Function(type)) return type.toJSON ? type.toJSON() : getTypeName(type)
+  if (NATIVE.Array(type)) return 'Array'
+  if (type && NATIVE.Object(type)) return 'Object'
 
   return type !== undefined ? type : ''
 }
 
-function tfErrorString (type, value, valueTypeName) {
+function tfErrorString(type, value, valueTypeName) {
   const valueJson = getValue(value)
 
   return 'Expected ' + tfJSON(type) + ', got' +
@@ -37,50 +38,65 @@ function tfErrorString (type, value, valueTypeName) {
     (valueJson !== '' ? ' ' + valueJson : '')
 }
 
-function TfTypeError (type, value, valueTypeName) {
-  valueTypeName = valueTypeName || getValueTypeName(value)
-  this.message = tfErrorString(type, value, valueTypeName)
+export class TfTypeError extends Error {
+  constructor(type, value, valueTypeName="") {
+     
+    valueTypeName = valueTypeName || getValueTypeName(value)
+    const message = tfErrorString(type, value, valueTypeName)
 
-  captureStackTrace(this, TfTypeError)
-  this.__type = type
-  this.__value = value
-  this.__valueTypeName = valueTypeName
+    console.log('TfTypeError1',valueTypeName,message)
+    super(message) 
+    this.__type = type
+    this.__value = value
+    this.__valueTypeName = valueTypeName
+    captureStackTrace(this, TfTypeError)
+  }
+
+  log() {
+    console.error(`${this.name}: ${this.message}`)
+  }
 }
 
-TfTypeError.prototype = Object.create(Error.prototype)
-TfTypeError.prototype.constructor = TfTypeError
+// TfTypeError.prototype = Object.create(Error.prototype)
 
-function tfPropertyErrorString (type, label, name, value, valueTypeName) {
+function tfPropertyErrorString(type, label, name, value, valueTypeName=undefined) {
   let description = '" of type '
   if (label === 'key') description = '" with key type '
 
   return tfErrorString('property "' + tfJSON(name) + description + tfJSON(type), value, valueTypeName)
 }
 
-function TfPropertyTypeError (type, property, label, value, valueTypeName) {
-  if (type) {
-    valueTypeName = valueTypeName || getValueTypeName(value)
-    this.message = tfPropertyErrorString(type, label, property, value, valueTypeName)
-  } else {
-    this.message = 'Unexpected property "' + property + '"'
+export class TfPropertyTypeError extends Error {
+  constructor(type, property, label, value, valueTypeName) {
+    let message = 'Unexpected property "' + property + '"'
+    if (type) {
+      valueTypeName = valueTypeName || getValueTypeName(value)
+      message = tfPropertyErrorString(type, label, property, value, valueTypeName)
+    }
+
+    super(message)
+    this.__label = label
+    this.__property = property
+    this.__type = type
+    this.__value = value
+    this.__valueTypeName = valueTypeName
+    captureStackTrace(this, TfTypeError)
   }
 
-  captureStackTrace(this, TfTypeError)
-  this.__label = label
-  this.__property = property
-  this.__type = type
-  this.__value = value
-  this.__valueTypeName = valueTypeName
+  log() {
+    console.error(`${this.name}: ${this.message}`)
+  }
+
+
 }
 
-TfPropertyTypeError.prototype = Object.create(Error.prototype)
-TfPropertyTypeError.prototype.constructor = TfTypeError
+// TfPropertyTypeError.prototype = Object.create(Error.prototype)
 
-function tfCustomError (expected, actual) {
+export function tfCustomError(expected, actual) {
   return new TfTypeError(expected, {}, actual)
 }
 
-function tfSubError (e, property, label) {
+export function tfSubError(e, property, label) {
   // sub child?
   if (e instanceof TfPropertyTypeError) {
     property = property + '.' + e.__property
@@ -89,7 +105,7 @@ function tfSubError (e, property, label) {
       e.__type, property, e.__label, e.__value, e.__valueTypeName
     )
 
-  // child?
+    // child?
   } else if (e instanceof TfTypeError) {
     e = new TfPropertyTypeError(
       e.__type, property, label, e.__value, e.__valueTypeName
@@ -100,11 +116,17 @@ function tfSubError (e, property, label) {
   return e
 }
 
-module.exports = {
-  TfTypeError: TfTypeError,
-  TfPropertyTypeError: TfPropertyTypeError,
-  tfCustomError: tfCustomError,
-  tfSubError: tfSubError,
-  tfJSON: tfJSON,
-  getValueTypeName: getValueTypeName
+export default {
+  tfJSON,
+  TfTypeError,
+  TfPropertyTypeError,
+  tfSubError,
+  getValueTypeName
 }
+
+// export const TfTypeError = TfTypeError
+// export const TfPropertyTypeError = TfPropertyTypeError
+// export const tfCustomError = tfCustomError
+// export const tfSubError = tfSubError
+// export const tfJSON = tfJSON
+// export const getValueTypeName = getValueTypeName

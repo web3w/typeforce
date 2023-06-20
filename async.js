@@ -1,4 +1,4 @@
-const typeforce = require('./')
+import typeforce from './index.js'
 
 // async wrapper
 function tfAsync (type, value, strict, callback) {
@@ -14,4 +14,7 @@ function tfAsync (type, value, strict, callback) {
   callback()
 }
 
-module.exports = Object.assign(tfAsync, typeforce)
+const merged = Object.assign(tfAsync, typeforce);
+
+
+export { merged }

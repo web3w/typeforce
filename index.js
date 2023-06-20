@@ -1,19 +1,26 @@
-const ERRORS = require('./errors')
-const NATIVE = require('./native')
+import {
+  tfJSON,
+  TfTypeError,
+  TfPropertyTypeError,
+  tfSubError,
+  getValueTypeName
+} from './errors.js'
+import NATIVE from './native.js'
+import EXTRA from './extra.js'
 
 // short-hand
-const tfJSON = ERRORS.tfJSON
-const TfTypeError = ERRORS.TfTypeError
-const TfPropertyTypeError = ERRORS.TfPropertyTypeError
-const tfSubError = ERRORS.tfSubError
-const getValueTypeName = ERRORS.getValueTypeName
+// const tfJSON = ERRORS.tfJSON
+// const TfTypeError = ERRORS.TfTypeError
+// const TfPropertyTypeError = ERRORS.TfPropertyTypeError
+// const tfSubError = ERRORS.tfSubError
+// const getValueTypeName = ERRORS.getValueTypeName
 
-const TYPES = {
-  arrayOf: function arrayOf (type, options) {
+export const TYPES = {
+  arrayOf: function arrayOf(type, options) {
     type = compile(type)
     options = options || {}
 
-    function _arrayOf (array, strict) {
+    function _arrayOf(array, strict) {
       if (!NATIVE.Array(array)) return false
       if (NATIVE.Nil(array)) return false
       if (options.minLength !== undefined && array.length < options.minLength) return false
@@ -43,10 +50,10 @@ const TYPES = {
     return _arrayOf
   },
 
-  maybe: function maybe (type) {
+  maybe: function maybe(type) {
     type = compile(type)
 
-    function _maybe (value, strict) {
+    function _maybe(value, strict) {
       return NATIVE.Nil(value) || type(value, strict, maybe)
     }
     _maybe.toJSON = function () { return '?' + tfJSON(type) }
@@ -54,11 +61,11 @@ const TYPES = {
     return _maybe
   },
 
-  map: function map (propertyType, propertyKeyType) {
+  map: function map(propertyType, propertyKeyType) {
     propertyType = compile(propertyType)
     if (propertyKeyType) propertyKeyType = compile(propertyKeyType)
 
-    function _map (value, strict) {
+    function _map(value, strict) {
       if (!NATIVE.Object(value)) return false
       if (NATIVE.Nil(value)) return false
 
@@ -93,14 +100,14 @@ const TYPES = {
     return _map
   },
 
-  object: function object (uncompiled) {
+  object: function object(uncompiled) {
     const type = {}
 
     for (const typePropertyName in uncompiled) {
       type[typePropertyName] = compile(uncompiled[typePropertyName])
     }
 
-    function _object (value, strict) {
+    function _object(value, strict) {
       if (!NATIVE.Object(value)) return false
       if (NATIVE.Nil(value)) return false
 
@@ -132,10 +139,10 @@ const TYPES = {
     return _object
   },
 
-  anyOf: function anyOf () {
+  anyOf: function anyOf() {
     const types = [].slice.call(arguments).map(compile)
 
-    function _anyOf (value, strict) {
+    function _anyOf(value, strict) {
       return types.some(function (type) {
         try {
           return typeforce(type, value, strict)
@@ -149,10 +156,10 @@ const TYPES = {
     return _anyOf
   },
 
-  allOf: function allOf () {
+  allOf: function allOf() {
     const types = [].slice.call(arguments).map(compile)
 
-    function _allOf (value, strict) {
+    function _allOf(value, strict) {
       return types.every(function (type) {
         try {
           return typeforce(type, value, strict)
@@ -166,8 +173,8 @@ const TYPES = {
     return _allOf
   },
 
-  quacksLike: function quacksLike (type) {
-    function _quacksLike (value) {
+  quacksLike: function quacksLike(type) {
+    function _quacksLike(value) {
       return type === getValueTypeName(value)
     }
     _quacksLike.toJSON = function () { return type }
@@ -175,10 +182,10 @@ const TYPES = {
     return _quacksLike
   },
 
-  tuple: function tuple () {
+  tuple: function tuple() {
     const types = [].slice.call(arguments).map(compile)
 
-    function _tuple (values, strict) {
+    function _tuple(values, strict) {
       if (NATIVE.Nil(values)) return false
       if (NATIVE.Nil(values.length)) return false
       if (strict && (values.length !== types.length)) return false
@@ -196,8 +203,8 @@ const TYPES = {
     return _tuple
   },
 
-  value: function value (expected) {
-    function _value (actual) {
+  value: function value(expected) {
+    function _value(actual) {
       return actual === expected
     }
     _value.toJSON = function () { return expected }
@@ -209,7 +216,7 @@ const TYPES = {
 // TODO: deprecate
 TYPES.oneOf = TYPES.anyOf
 
-function compile (type) {
+export function compile(type) {
   if (NATIVE.String(type)) {
     if (type[0] === '?') return TYPES.maybe(type.slice(1))
 
@@ -228,10 +235,11 @@ function compile (type) {
   return TYPES.value(type)
 }
 
-function typeforce (type, value, strict, surrogate) {
+export default function typeforce(type, value, strict, surrogate) {
   if (NATIVE.Function(type)) {
     if (type(value, strict)) return true
 
+    console.log('TfTypeError',surrogate,value)
     throw new TfTypeError(surrogate || type, value)
   }
 
@@ -244,12 +252,11 @@ for (const typeName in NATIVE) {
   typeforce[typeName] = NATIVE[typeName]
 }
 
-for (typeName in TYPES) {
+for (const typeName in TYPES) {
   typeforce[typeName] = TYPES[typeName]
 }
 
-const EXTRA = require('./extra')
-for (typeName in EXTRA) {
+for (const typeName in EXTRA) {
   typeforce[typeName] = EXTRA[typeName]
 }
 
@@ -257,4 +264,3 @@ typeforce.compile = compile
 typeforce.TfTypeError = TfTypeError
 typeforce.TfPropertyTypeError = TfPropertyTypeError
 
-module.exports = typeforce

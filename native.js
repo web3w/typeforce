@@ -18,4 +18,4 @@ for (const typeName in types) {
   }.bind(null, typeName)
 }
 
-module.exports = types
+export default types
